@@ -4,8 +4,8 @@
 
  * Simple ROS2 teleop applications using Eclipse zenoh (more details in [this blog](https://zenoh.io/blog/2021-04-28-ros2-integration/)):
    * **[zenoh-csharp-teleop](./zenoh-csharp-teleop)**: in **C#**
-   * **[zenoh-python-teleop](.zenoh-python-teleop)**: in **Python**
-   * **[zenoh-rust-teleop](.zenoh-python-teleop)**: in **Rust**
+   * **[zenoh-python-teleop](./zenoh-python-teleop)**: in **Python**
+   * **[zenoh-rust-teleop](./zenoh-rust-teleop)**: in **Rust**
 
 
 ## Other related demos and blogs
