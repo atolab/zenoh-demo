@@ -27,16 +27,16 @@ It will create two executables: `./target/debug/zenoh_put_shamir` and `./target/
 
 ### How to run
 
-Before launching the routers, a quick explanation of how this process works is required.
+Before launching the routers, a quick explanation is required.
 
-When called, `./target/debug/zenoh_put_shamir` will create shares of the value. The number of shares is controlled by the parameters `--threshold (-t)` and `--redundancy (-r)`, which respectively represent the number of shares required to recover the secret and the number of "copies" each share should have.
+When called, `./target/debug/zenoh_put_shamir` will create shares of the value that is passed. The number of shares is controlled by the parameters `--threshold (-t)` and `--redundancy (-r)`, which respectively represent the number of shares required to recover the secret and the number of "copies" each share should have (the term "copy" is incorrect but the idea is similar).
 
-The shares are put to `/share/{{i}}/{{path}}` where `{{i}}` is the index of the shared and `{{path}}` the path provided when calling the executable.
+The shares are put to `/share/{{i}}/{{path}}` where `{{i}}` is the index of the share and `{{path}}` the path provided when calling the executable.
 
 For instance, if the following call is made:
 
 ```sh
-./target/debug/zenoh_put_shamir -p "/demo/secret" -v "d@rk" -t 2 -r 2
+./target/debug/zenoh_put_shamir -p "/demo/secret" -v "s3cr3t" -t 2 -r 2
 ```
 
 What happens is:
@@ -47,15 +47,15 @@ What happens is:
   * `/share/2/demo/secret`,
   * `/share/3/demo/secret`.
 
-This means that we need subscribers for the paths `/share/0/**`, `/share/1/**`, …, `/share/n/**`. Note that, for now, it is not possible to modify the base path (`/share/{{i}}`) as it was hardcoded in both executables.
+This means that we need subscribers for the paths `/share/0/**`, …, `/share/3/**`. Note that, for now, it is not possible to modify the base path (`/share/{{i}}`) as it was hardcoded in both executables.
 
 With just this setup, it is possible to retrieve the shares and manually reconstruct the secret. But, as we can easily automate that part with an eval, this is exactly what `./target/debug/zenoh_eval_shamir` does: it tries to fetch enough shares in order to reconstruct the secret.
 
 #### Starting the router(s)
 
-For the purpose of having a distributed setting, we will consider that `threshold` and `redundancy` are both equal to 2 and thus start 4 routers, each in its own terminal:
+For the purpose of having a distributed setting, we will consider that `threshold` and `redundancy` are both equal to 2 (the default values if the parameters are omitted) and thus start 4 routers, each in its own terminal:
 
-```
+```sh
 ./target/debug/zenohd -l tcp/127.0.0.1:7447 --rest-http-port 8000 --mem-storage="/share/0/**"
 
 ./target/debug/zenohd -l tcp/127.0.0.1:7448 --rest-http-port 8001 --mem-storage="/share/1/**" \
@@ -82,18 +82,33 @@ For the purpose of having a distributed setting, we will consider that `threshol
 
 #### GET the secret back
 
-* curl:
+* Via `curl`:
   ```
   curl "http://localhost:8000/shamir?(name=/demo/secret)"
   ```
+  Which should return:
+  ```json
+  { "key": "/shamir", "value": "s3cr3t", "encoding": "text/plain", "time": "2021-05-07T09:06:17.707710000Z/00" }
+  ```
+  
 
 * Via `z_get`:
   ```
   ./target/debug/examples/z_get -s "/shamir?(name=/demo/secret)"
   ```
+  Which should return:
+  ```
+  /shamir : StringUtf8("s3cr3t") (encoding: text/plain , timestamp: 2021-05-07T09:04:05.506096000Z/00)
+  ```
+  
+And voilà! With this small demonstration we managed to create shares of a value, store them and finally get them back in order to recover our value, all while using Zenoh.
 
-It is entirely possible to query the shares separately, as they are valid named resources. For instance, to get the first share:
+Note that it is entirely possible to query the shares separately, as they are valid named resources. For instance, to get the first share:
 
 ```
 curl "http://localhost:8000/share/0/demo/secret"
+```
+
+```json
+{ "key": "/share/0/demo/secret", "value": "Af/toS5UZA==", "encoding": "application/octet-stream", "time": "2021-05-07T09:01:57.717134997Z/B77328F198C34C48B1056216AA3CF157" }
 ```
